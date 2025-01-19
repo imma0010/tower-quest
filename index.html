@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tower Quest</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+    }
+
+    .game-container {
+      max-width: 600px;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .tower {
+      margin: 20px 0;
+    }
+
+    #floor-container {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+    }
+
+    .floor {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .floor.highlight {
+      border: 3px solid gold;
+      padding: 5px;
+    }
+
+    .box {
+      width: 50px;
+      height: 50px;
+      background: lightblue;
+      border: 2px solid #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .box.selected {
+      border: 3px solid blue;
+    }
+
+    .box.revealed {
+      cursor: default;
+    }
+
+    .box.gem {
+      background: lightgreen;
+    }
+
+    .box.bomb {
+      background: red;
+    }
+
+    .status {
+      margin: 10px 0;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #333;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>Tower Quest</h1>
+    <div class="status">
+      <p>Current Floor: <span id="current-floor">1</span></p>
+      <p>Player Points: <span id="player-points">100</span></p>
+    </div>
+    <div class="tower">
+      <div id="floor-container"></div>
+    </div>
+    <div class="controls">
+      <button id="reset-game">Reset Game</button>
+      <button id="auto-play">Auto Play</button>
+    </div>
+  </div>
+
+  <script>
+    class TowerQuest {
+      constructor(difficulty = "Normal", autoPlayRounds = 0) {
+        this.difficultyLevels = {
+          Normal: { boxes: 4, gems: 3, bombs: 1 },
+          Medium: { boxes: 3, gems: 2, bombs: 1 },
+          Hard: { boxes: 3, gems: 1, bombs: 2 },
+          Impossible: { boxes: 4, gems: 1, bombs: 3 },
+        };
+        this.difficulty = difficulty;
+        this.autoPlayRounds = autoPlayRounds;
+        this.selectedBoxes = {}; // Track selected boxes for each floor
+        this.resetGame();
+      }
+
+      resetGame() {
+        const { boxes, gems, bombs } = this.difficultyLevels[this.difficulty];
+        this.floors = 8;
+        this.currentFloor = 0;
+        this.playerPoints = 100;
+        this.autoPlay = this.autoPlayRounds > 0;
+        this.boxesPerFloor = this.generateFloors(boxes, gems, bombs);
+        this.selectedBoxes = {}; // Reset selected boxes
+        this.gameOver = false;
+        console.log("Game Reset. Good Luck!");
+      }
+
+      generateFloors(boxes, gems, bombs) {
+        const floors = [];
+        for (let i = 0; i < this.floors; i++) {
+          const floor = Array.from({ length: boxes }, () => "gem");
+          for (let j = 0; j < bombs; j++) {
+            const bombIndex = Math.floor(Math.random() * boxes);
+            floor[bombIndex] = "bomb";
+          }
+          floors.push(floor.sort(() => Math.random() - 0.5));
+        }
+        return floors;
+      }
+
+      selectBox(floorIndex, boxIndex) {
+        if (this.gameOver || this.currentFloor >= this.floors) {
+          console.log("Game Over. Reset to play again.");
+          return;
+        }
+
+        this.selectedBoxes[floorIndex] = boxIndex; // Save the selected box for the floor
+        const boxContent = this.boxesPerFloor[this.currentFloor][boxIndex];
+        console.log(`Floor ${this.currentFloor + 1}, Box ${boxIndex + 1}: ${boxContent.toUpperCase()}`);
+
+        if (boxContent === "bomb") {
+          this.gameOver = true;
+          this.revealAllBoxes();
+          console.log("You hit a bomb! Game Over.");
+        } else {
+          this.currentFloor++;
+          this.playerPoints += 10;
+          if (this.currentFloor === this.floors) {
+            console.log("Congratulations! You reached the top floor.");
+          }
+        }
+      }
+
+      revealAllBoxes() {
+        console.log("Revealing all boxes:");
+        this.boxesPerFloor.forEach((floor, i) => {
+          console.log(`Floor ${i + 1}: ${floor.join(", ")}`);
+        });
+      }
+
+      autoPlay() {
+        while (this.autoPlayRounds > 0 && !this.gameOver) {
+          const boxIndex = Math.floor(Math.random() * this.difficultyLevels[this.difficulty].boxes);
+          console.log(`Auto-playing round ${this.autoPlayRounds}...`);
+          this.selectBox(boxIndex);
+          this.autoPlayRounds--;
+        }
+        if (!this.gameOver) {
+          console.log("Auto-play finished. Game is still in progress.");
+        }
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const difficulty = "Normal";
+      const game = new TowerQuest(difficulty);
+
+      const floorContainer = document.getElementById("floor-container");
+      const currentFloorDisplay = document.getElementById("current-floor");
+      const playerPointsDisplay = document.getElementById("player-points");
+
+      const resetGameButton = document.getElementById("reset-game");
+      const autoPlayButton = document.getElementById("auto-play");
+
+      function renderGame() {
+        floorContainer.innerHTML = "";
+        game.boxesPerFloor.forEach((floor, index) => {
+          const floorDiv = document.createElement("div");
+          floorDiv.classList.add("floor");
+
+          if (index === game.currentFloor) {
+            floorDiv.classList.add("highlight");
+          }
+
+          floor.forEach((boxContent, boxIndex) => {
+            const boxDiv = document.createElement("div");
+            boxDiv.classList.add("box");
+
+            // Highlight selected boxes
+            if (game.selectedBoxes[index] === boxIndex) {
+              boxDiv.classList.add("selected");
+            }
+
+            if (index < game.currentFloor || game.gameOver) {
+              boxDiv.classList.add("revealed");
+              boxDiv.textContent = boxContent === "gem" ? "🍎" : "💣";
+              boxDiv.classList.add(boxContent);
+            } else {
+              boxDiv.addEventListener("click", () => handleBoxClick(index, boxIndex));
+            }
+
+            floorDiv.appendChild(boxDiv);
+          });
+
+          floorContainer.appendChild(floorDiv);
+        });
+
+        currentFloorDisplay.textContent = game.currentFloor + 1;
+        playerPointsDisplay.textContent = game.playerPoints;
+      }
+
+      function handleBoxClick(floorIndex, boxIndex) {
+        if (floorIndex !== game.currentFloor || game.gameOver) return;
+
+        const floorDivs = floorContainer.querySelectorAll(".floor");
+        const currentFloorDiv = floorDivs[floorIndex];
+        const boxes = currentFloorDiv.querySelectorAll(".box");
+
+        // Remove 'selected' from all boxes in the current floor
+        boxes.forEach((box) => box.classList.remove("selected"));
+
+        // Mark the selected box
+        boxes[boxIndex].classList.add("selected");
+
+        game.selectBox(floorIndex, boxIndex);
+        renderGame();
+      }
+
+      resetGameButton.addEventListener("click", () => {
+        game.resetGame();
+        renderGame();
+      });
+
+      autoPlayButton.addEventListener("click", () => {
+        if (game.gameOver) {
+          console.log("Game is over. Please reset to play again.");
+          return;
+        }
+
+        const rounds = prompt("Enter the number of rounds for auto-play (or type 'infinite'):", "5");
+
+        if (rounds === "infinite") {
+          game.autoPlayRounds = Infinity;
+        } else if (isNaN(rounds) || rounds <= 0) {
+          alert("Invalid input. Please enter a positive number or 'infinite'.");
+          return;
+        } else {
+          game.autoPlayRounds = parseInt(rounds, 10);
+        }
+
+        function autoPlayRound() {
+          if (game.autoPlayRounds > 0 && !game.gameOver && game.currentFloor < game.floors) {
+            const boxIndex = Math.floor(Math.random() * game.difficultyLevels[game.difficulty].boxes);
+            game.selectBox(boxIndex);
+            renderGame();
+            game.autoPlayRounds--;
+            setTimeout(autoPlayRound, 1000); // Adds delay for visual updates
+          } else {
+            console.log("Auto-play finished.");
+          }
+        }
+
+        autoPlayRound();
+      });
+
+      renderGame();
+    });
+  </script>
+</body>
+</html>
